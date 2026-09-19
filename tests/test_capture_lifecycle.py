@@ -233,9 +233,12 @@ def test_pause_stops_capture_and_resume_restarts(monkeypatch, tmp_path) -> None:
 
         ws.send({"type": "pause"})
         assert await _wait_until(lambda: any('"paused"' in text for text in ws.sent_text))
-        frozen = ws.sent_bytes
         # no new frames while paused, and the helper is released
         assert await _wait_until(lambda: not _pid_alive(first_pid), timeout=10)
+        # A pause request can race with one in-flight frame. Sample after the
+        # helper exits so we assert the stream has gone quiescent.
+        await asyncio.sleep(0.2)
+        frozen = ws.sent_bytes
         await asyncio.sleep(0.5)
         assert ws.sent_bytes == frozen
 
